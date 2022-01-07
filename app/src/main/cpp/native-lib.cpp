@@ -12,10 +12,9 @@ extern "C" {
 #include "libavcodec/avcodec.h"
 }
 
-extern "C" JNIEXPORT jstring JNICALL
-Java_com_gpf_ffmpeg_MainActivity_stringFromJNI(
-        JNIEnv* env,
-        jobject /* this */) {
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_gpf_ffmpeg_FFmpeg_displayFFmpegInfo(JNIEnv *env, jobject thiz) {
     char strBuffer[1024 * 4] = {0};
     strcat(strBuffer, "libavcodec : ");
     strcat(strBuffer, AV_STRINGIFY(LIBAVCODEC_VERSION));
@@ -36,4 +35,20 @@ Java_com_gpf_ffmpeg_MainActivity_stringFromJNI(
     LOGCATE("GetFFmpegVersion\n%s", strBuffer);
 
     return env->NewStringUTF(strBuffer);
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_gpf_ffmpeg_FFmpeg_decodeVideo(JNIEnv *env, jobject thiz, jstring path) {
+
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_gpf_ffmpeg_FFmpeg_decodeVideoAndPlay(JNIEnv *env, jobject thiz, jstring path,
+                                              jobject surface) {
+
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_gpf_ffmpeg_FFmpeg_decodeAudio(JNIEnv *env, jobject thiz, jstring path) {
+
 }
