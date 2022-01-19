@@ -6,7 +6,7 @@ object FFmpeg {
 
     external fun displayFFmpegInfo(): String
 
-    external fun decodeVideo(path:String)
+    external fun decodeVideo(path:String, outPath:String)
 
     external fun decodeVideoAndPlay(path:String, surface:Surface)
 
