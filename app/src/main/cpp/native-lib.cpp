@@ -94,40 +94,46 @@ Java_com_gpf_ffmpeg_FFmpeg_decodeVideo(JNIEnv *env, jobject thiz, jstring path, 
         return;
     }
 
-    AVPacket *packet = av_packet_alloc();
     AVFrame *frame = av_frame_alloc();
 
     //YUV420
-    AVFrame *frameYUV = av_frame_alloc();
-    const uint8_t *frameYUVBuffer;
+//    AVFrame *frameYUV = av_frame_alloc();
+//    const uint8_t *frameYUVBuffer;
 
-    int bufferSize = av_image_get_buffer_size(AV_PIX_FMT_YUV420P,
-                                              codecContext->width,
-                                              codecContext->height, 1);
-    frameYUVBuffer = (const uint8_t *) av_malloc(bufferSize * sizeof(const uint8_t *));
-    av_image_fill_arrays(frameYUV->data, frameYUV->linesize,
-                         frameYUVBuffer, AV_PIX_FMT_YUV420P,
-                         codecContext->width,
-                         codecContext->height,
-                         1);
+    //==================================== 分配空间 ==================================//
+    //一帧图像数据大小
+//    int bufferSize = av_image_get_buffer_size(AV_PIX_FMT_YUV420P,
+//                                              codecContext->width,
+//                                              codecContext->height, 1);
+//    frameYUVBuffer = (const uint8_t *) av_malloc(bufferSize * sizeof(const uint8_t *));
+    //会将pFrameRGB的数据按RGB格式自动"关联"到buffer  即nv12Frame中的数据改变了
+    //out_buffer中的数据也会相应的改变
+//    av_image_fill_arrays(frameYUV->data, frameYUV->linesize,
+//                         frameYUVBuffer, AV_PIX_FMT_YUV420P,
+//                         codecContext->width,
+//                         codecContext->height,
+//                         1);
 
     // 分配并返回一个 SwsContext。 您需要它使用 sws_scale() 执行缩放/转换操作
     // AV_PIX_FMT_YUV420P
     // AV_PIX_FMT_RGBA
     // SWS_BICUBIC
     // SWS_FAST_BILINEAR
-    SwsContext *swsContext = sws_getContext(codecContext->width,
-                                            codecContext->height,
-                                            codecContext->pix_fmt,
-                                            codecContext->width,
-                                            codecContext->height,
-                                            AV_PIX_FMT_YUV420P,
-                                            SWS_BICUBIC, nullptr, nullptr, nullptr);
-
+//    SwsContext *swsContext = sws_getContext(codecContext->width,
+//                                            codecContext->height,
+//                                            codecContext->pix_fmt,
+//                                            codecContext->width,
+//                                            codecContext->height,
+//                                            AV_PIX_FMT_YUV420P,
+//                                            SWS_BICUBIC, nullptr, nullptr, nullptr);
+//
     const char *output_cstr = env->GetStringUTFChars(out_path, nullptr);
-    FILE *fpYUV = fopen(output_cstr, "wb+");
 
-    LOGCATE("size=%d,%d", codecContext->width, codecContext->height);
+    FILE *fpYUV = fopen(output_cstr, "w+b");
+
+    // 因为FFmpeg软解后的帧格式为YUV420P，也就不用进行格式转换了，直接将解码后的数据写入本地就行了
+
+    AVPacket *packet = av_packet_alloc();
 
     // 返回流的下一帧数据 <0 error或者读到结尾
     while (av_read_frame(formatContext, packet) >= 0) {
@@ -138,19 +144,25 @@ Java_com_gpf_ffmpeg_FFmpeg_decodeVideo(JNIEnv *env, jobject thiz, jstring path, 
             if (result == 0) {
                 // 从解码器返回解码后的输出数据
                 while (avcodec_receive_frame(codecContext, frame) == 0) {
-                    sws_scale(swsContext, frame->data, frame->linesize, 0,
-                              codecContext->height,
-                              frameYUV->data, frameYUV->linesize);
-
-                    //输出到YUV文件
-                    //AVFrame像素帧写入文件
-                    //data解码后的图像像素数据 (音频采样数据)
-                    //Y 亮度 U 色度 (压缩了) 人对亮度更加敏感
-                    //U V 个数是Y的1/4
                     int y_size = codecContext->width * codecContext->height;
-                    fwrite(frameYUV->data[0], 1, y_size, fpYUV); //Y
-                    fwrite(frameYUV->data[1], 1, y_size / 4, fpYUV); //U
-                    fwrite(frameYUV->data[2], 1, y_size / 4, fpYUV); //V
+                    fwrite(frame->data[0],1,y_size,fpYUV);//y
+                    fwrite(frame->data[1],1,y_size/4,fpYUV);//u
+                    fwrite(frame->data[2],1,y_size/4,fpYUV);//v
+
+//                    sws_scale(swsContext, frame->data, frame->linesize, 0,
+//                              codecContext->height,
+//                              frameYUV->data, frameYUV->linesize);
+//
+//                    //输出到YUV文件
+//                    //AVFrame像素帧写入文件
+//                    //data解码后的图像像素数据 (音频采样数据)
+//                    //Y 亮度 U 色度 (压缩了) 人对亮度更加敏感
+//                    //U V 个数是Y的1/4
+//                    int y_size = codecContext->width * codecContext->height;
+//
+//                    fwrite(frameYUV->data[0],1,y_size,fpYUV);//y
+//                    fwrite(frameYUV->data[1],1,y_size,fpYUV);//uv
+
                 }
             }
         }
@@ -163,16 +175,16 @@ Java_com_gpf_ffmpeg_FFmpeg_decodeVideo(JNIEnv *env, jobject thiz, jstring path, 
     // 关闭文件句柄
     fclose(fpYUV);
 
-    av_frame_free(&frameYUV);
-    frameYUV = nullptr;
+//    av_frame_free(&frameYUV);
+//    frameYUV = nullptr;
 
 //    if (frameYUVBuffer != nullptr) {
 //        free(frameYUVBuffer);
 //    }
 
-    if (swsContext != nullptr) {
-        sws_freeContext(swsContext);
-    }
+//    if (swsContext != nullptr) {
+//        sws_freeContext(swsContext);
+//    }
 
     if (frame != nullptr) {
         av_frame_free(&frame);
